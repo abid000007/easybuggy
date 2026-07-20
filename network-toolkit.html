@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Toolkit - CloudShell Automations</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .dt-range-bar{background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;}
+  .dt-range-bar .field{flex:1;min-width:180px;}
+  .dt-range-bar label{display:block;font-size:10px;font-weight:700;color:var(--accent-2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
+  .dt-range-bar input[type=datetime-local]{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border-subtle);background:rgba(8,12,20,.8);color:var(--text-primary);font-size:13px;outline:none;color-scheme:dark;font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  <div class="dt-range-bar">
+    <div class="field"><label>📅 Start Date &amp; Time</label><input type="datetime-local" id="global-start" oninput="initAll()"></div>
+    <div class="field"><label>📅 End Date &amp; Time</label><input type="datetime-local" id="global-end" oninput="initAll()"></div>
+  </div>
+  
+  <div class="header">
+    <div class="tag">🌐 Networking</div>
+    <h1>Network Debug Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Analyze VPC Flow Logs and DNS. Parameterize and copy.</p>
+  </div>
+
+  <div class="section-label">Traffic Analysis</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>VPC Flow Log REJECT Analyzer</h3>
+        <p>Query CloudWatch Logs for REJECT traffic targeting a specific IP.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Log Group Name</label>
+        <input type="text" id="net-group" value="/aws/vpc/flow-logs" oninput="updateVpcLogs()">
+      </div>
+      <div class="field">
+        <label>Target IP</label>
+        <input type="text" id="net-ip" value="10.0.1.5" oninput="updateVpcLogs()">
+      </div>
+      <div class="field">
+        <label>Duration (Minutes)</label>
+        <input type="number" id="net-min" value="60" oninput="updateVpcLogs()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('net-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="net-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">Advanced Connectivity</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>Security Group "Any-Open" Auditor</h3>
+        <p>Find Security Groups allowing 0.0.0.0/0 on sensitive ports (22, 3389, 80, 443).</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>VPC ID</label>
+        <input type="text" id="net-sg-vpc" value="vpc-12345" oninput="updateSgAudit()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sg-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sg-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>VPC Endpoint Reachability</h3>
+        <p>List VPC Endpoints and their associated subnets to verify private service access.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>VPC ID</label>
+        <input type="text" id="net-vpce-vpc" value="vpc-12345" oninput="updateVpce()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('vpce-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="vpce-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>DNS & Route53 Health Check</h3>
+        <p>Verify DNS resolution for a domain.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Domain Name</label>
+        <input type="text" id="net-dns" value="api.example.com" oninput="updateDns()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('dns-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="dns-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">Workspace Network Toolkit &copy; 2026</div>
+</div>
+
+<script>
+function copyCode(id, btn) {
+  const code = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(code);
+  const original = btn.innerHTML;
+  btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = original; }, 2000);
+}
+
+function updateVpcLogs() {
+  const group = document.getElementById('net-group').value;
+  const ip = document.getElementById('net-ip').value;
+  const min = document.getElementById('net-min').value;
+  
+  const script = `# Query VPC Flow Logs
+START_TIME=$(date -d "${min} minutes ago" +%s)
+QUERY_ID=$(aws logs start-query --log-group-name "${group}" --start-time $START_TIME --end-time $(date +%s) --query-string 'filter action="REJECT" and dstAddr="${ip}" | stats count(*) by srcAddr, dstPort, protocol' --query 'queryId' --output text)
+echo "Query started (ID: $QUERY_ID). Waiting 5s..."
+sleep 5
+aws logs get-query-results --query-id $QUERY_ID --output table`;
+  document.getElementById('net-code').innerText = script;
+}
+
+function updateSgAudit() {
+  const vpc = document.getElementById('net-sg-vpc').value;
+  const script = `# Find Open Security Groups in ${vpc}
+aws ec2 describe-security-groups --filters Name=vpc-id,Values=${vpc} \\
+  --query 'SecurityGroups[?IpPermissions[?IpRanges[?CidrIp==\`0.0.0.0/0\`]]].{ID:GroupId, Name:GroupName, Rules:IpPermissions[*].{Port:FromPort, Protocol:IpProtocol}}' \\
+  --output json`;
+  document.getElementById('sg-code').innerText = script;
+}
+
+function updateVpce() {
+  const vpc = document.getElementById('net-vpce-vpc').value;
+  const script = `# VPC Endpoints for ${vpc}
+aws ec2 describe-vpc-endpoints --filters Name=vpc-id,Values=${vpc} \\
+  --query 'VpcEndpoints[*].{ID:VpcEndpointId, Service:ServiceName, State:State, Subnets:SubnetIds}' \\
+  --output table`;
+  document.getElementById('vpce-code').innerText = script;
+}
+
+function updateDns() {
+  const domain = document.getElementById('net-dns').value;
+  const script = `# DNS Diagnosis
+echo "--- Dig (A Record) ---"
+dig +short ${domain}
+echo -e "\\n--- Dig (Trace) ---"
+dig +trace ${domain} | tail -n 10`;
+  document.getElementById('dns-code').innerText = script;
+}
+
+function getRange() {
+  const s = document.getElementById('global-start').value;
+  const e = document.getElementById('global-end').value;
+  const sMs = s ? new Date(s).getTime() : null;
+  const eMs = e ? new Date(e).getTime() : null;
+  const sLbl = s ? new Date(s).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(1 hour ago)';
+  const eLbl = e ? new Date(e).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(now)';
+  return { sMs, eMs, sLbl, eLbl };
+}
+function initAll() { updateVpcLogs(); updateSgAudit(); updateVpce(); updateDns(); }
+window.onload = () => {
+  const now = new Date(); const ago = new Date(now - 3600000);
+  const fmt = d => d.toISOString().slice(0,16);
+  document.getElementById('global-start').value = fmt(ago);
+  document.getElementById('global-end').value   = fmt(now);
+  initAll();
+};
+</script>
+</body>
+</html>

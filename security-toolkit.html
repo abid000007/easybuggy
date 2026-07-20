@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Toolkit - CloudShell Automations</title>
+<link rel="stylesheet" href="style.css">
+<style>.dt-range-bar{background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;}.dt-range-bar .field{flex:1;min-width:180px;}.dt-range-bar label{display:block;font-size:10px;font-weight:700;color:var(--accent-2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;}.dt-range-bar input[type=datetime-local]{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border-subtle);background:rgba(8,12,20,.8);color:var(--text-primary);font-size:13px;outline:none;color-scheme:dark;}</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  <div class="dt-range-bar">
+    <div class="field"><label>📅 Start Date &amp; Time</label><input type="datetime-local" id="global-start" oninput="initAll()"></div>
+    <div class="field"><label>📅 End Date &amp; Time</label><input type="datetime-local" id="global-end" oninput="initAll()"></div>
+  </div>
+  
+  <div class="header">
+    <div class="tag">🛡️ Security</div>
+    <h1>Security & Governance Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Audit S3, IAM, and CloudTrail. Parameterize and copy.</p>
+  </div>
+
+  <div class="section-label">Identity & Access</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>IAM Policy Simulator</h3>
+        <p>Check if a Role/User can perform an action.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>IAM ARN</label>
+        <input type="text" id="iam-arn" value="arn:aws:iam::123:role/app-role" oninput="updateIamSim()">
+      </div>
+      <div class="field">
+        <label>Action</label>
+        <input type="text" id="iam-action" value="s3:PutObject" oninput="updateIamSim()">
+      </div>
+      <div class="field">
+        <label>Resource ARN</label>
+        <input type="text" id="iam-res" value="arn:aws:s3:::my-bucket/*" oninput="updateIamSim()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('iam-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="iam-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">Advanced Auditing</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>KMS Key Rotation Auditor</h3>
+        <p>Check if KMS keys have rotation enabled and who has management access.</p>
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('kms-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="kms-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>Secrets Manager Rotation Health</h3>
+        <p>List secrets and their last rotation status.</p>
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('secrets-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="secrets-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">Log Investigation</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>CloudTrail Event Investigator</h3>
+        <p>Find resource modifications for a specific resource ID.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Resource Name/ID</label>
+        <input type="text" id="gov-id" value="my-iam-user" oninput="updateCloudTrail()">
+      </div>
+      <div class="field">
+        <label>Lookback Hours</label>
+        <input type="number" id="gov-hours" value="24" oninput="updateCloudTrail()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('gov-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="gov-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>S3 Bucket Security Auditor</h3>
+        <p>Check Public Access and Encryption for a bucket.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Bucket Name</label>
+        <input type="text" id="s3-name" value="my-secure-bucket" oninput="updateS3Audit()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('s3-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="s3-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">Workspace Security Toolkit &copy; 2026</div>
+</div>
+
+<script>
+function copyCode(id, btn) {
+  const code = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(code);
+  const original = btn.innerHTML;
+  btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = original; }, 2000);
+}
+
+function updateIamSim() {
+  const arn = document.getElementById('iam-arn').value;
+  const action = document.getElementById('iam-action').value;
+  const res = document.getElementById('iam-res').value;
+  const script = `# IAM Simulation
+aws iam simulate-principal-policy --policy-source-arn ${arn} --action-names ${action} --resource-arns ${res} --query 'EvaluationResults[*].{Action:EvalActionName, Decision:EvalDecision}' --output table`;
+  document.getElementById('iam-code').innerText = script;
+}
+
+function updateKms() {
+  const script = `# KMS Key Rotation Status
+KEYS=$(aws kms list-keys --query 'Keys[*].KeyId' --output text)
+for key in $KEYS; do
+  echo "Key: $key"
+  aws kms get-key-rotation-status --key-id $key
+done`;
+  document.getElementById('kms-code').innerText = script;
+}
+
+function updateSecrets() {
+  const script = `# Secrets Manager Health
+aws secretsmanager list-secrets --query 'SecretList[*].{Name:Name, LastRotated:LastRotatedDate, RotationEnabled:RotationEnabled}' --output table`;
+  document.getElementById('secrets-code').innerText = script;
+}
+
+function updateCloudTrail() {
+  const id = document.getElementById('gov-id').value;
+  const hours = document.getElementById('gov-hours').value;
+  const script = `# CloudTrail Lookup
+aws cloudtrail lookup-events --lookup-attributes AttributeKey=ResourceName,AttributeValue=${id} --start-time $(date -d "${hours} hours ago" +%s) --query 'Events[*].{Time:EventTime, User:Username, Event:EventName, Source:EventSource}' --output table`;
+  document.getElementById('gov-code').innerText = script;
+}
+
+function updateS3Audit() {
+  const name = document.getElementById('s3-name').value;
+  const script = `# S3 Audit
+echo "Public Access Block:"
+aws s3api get-public-access-block --bucket ${name} --query 'PublicAccessBlockConfiguration' --output json
+echo "Encryption:"
+aws s3api get-bucket-encryption --bucket ${name} --query 'ServerSideEncryptionConfiguration' --output json`;
+  document.getElementById('s3-code').innerText = script;
+}
+
+function getRange() {
+  const s = document.getElementById('global-start').value;
+  const e = document.getElementById('global-end').value;
+  const sMs = s ? new Date(s).getTime() : null;
+  const eMs = e ? new Date(e).getTime() : null;
+  const sLbl = s ? new Date(s).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(24h ago)';
+  const eLbl = e ? new Date(e).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(now)';
+  const st = sMs ? new Date(sMs).toISOString() : "$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)";
+  const et = eMs ? new Date(eMs).toISOString() : "$(date -u +%Y-%m-%dT%H:%M:%SZ)";
+  return { sMs, eMs, sLbl, eLbl, st, et };
+}
+function initAll() { updateIamSim(); updateKms(); updateSecrets(); updateCloudTrail(); updateS3Audit(); }
+window.onload = () => {
+  const now = new Date(); const ago = new Date(now - 24*3600000);
+  const fmt = d => d.toISOString().slice(0,16);
+  document.getElementById('global-start').value = fmt(ago);
+  document.getElementById('global-end').value = fmt(now);
+  initAll();
+};
+</script>
+</body>
+</html>

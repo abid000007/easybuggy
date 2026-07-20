@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workspace Automation Portal</title>
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+<div class="container">
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark">AP</span>
+      <div>
+        <div class="brand-title">Automation Portal</div>
+        <div class="brand-subtitle">Internal DevOps workspace</div>
+      </div>
+    </div>
+    <a href="admin.html" class="meta-pill">Admin Panel</a>
+  </div>
+
+  <section class="portal-hero">
+    <div class="header">
+      <div class="tag">Operations Toolkit</div>
+      <h1>Runbooks, generators, and infrastructure helpers in one place.</h1>
+      <p>Use the portal to prepare change documents, generate deployment scripts, inspect cloud services, and ask questions against uploaded knowledge-base docs.</p>
+    </div>
+    <div class="portal-actions">
+      <a href="kb.html" class="btn">Open Knowledge Base</a>
+      <a href="crf.html" class="btn btn-outline">Create CRF</a>
+    </div>
+  </section>
+
+  <div class="section-header">Core Tools</div>
+  <div class="tool-grid">
+    <a href="crf.html" class="tool-card">
+      <span class="tool-mark">CRF</span>
+      <div>
+        <h2>CRF Generator</h2>
+        <p>Generate formatted change request documents for review and approval.</p>
+      </div>
+    </a>
+    <a href="shift.html" class="tool-card">
+      <span class="tool-mark">EOD</span>
+      <div>
+        <h2>End of Shift Form</h2>
+        <p>Capture shift activity and prepare a handover report.</p>
+      </div>
+    </a>
+    <a href="pipeline.html" class="tool-card">
+      <span class="tool-mark">CI</span>
+      <div>
+        <h2>Jenkins Pipeline</h2>
+        <p>Generate Groovy pipeline scripts for CI/CD deployments.</p>
+      </div>
+    </a>
+    <a href="kb.html" class="tool-card">
+      <span class="tool-mark">KB</span>
+      <div>
+        <h2>Knowledge Base</h2>
+        <p>Chat with infrastructure documentation using the RAG assistant.</p>
+      </div>
+    </a>
+  </div>
+
+  <div class="section-header">Cloud Diagnostics</div>
+  <div class="tool-grid compact">
+    <a href="k8s-toolkit.html" class="tool-card">
+      <span class="tool-mark">K8S</span>
+      <div>
+        <h2>Kubernetes</h2>
+        <p>Pod logs, quotas, node taints, and service mapping.</p>
+      </div>
+    </a>
+    <a href="network-toolkit.html" class="tool-card">
+      <span class="tool-mark">VPC</span>
+      <div>
+        <h2>VPC & Network</h2>
+        <p>Flow logs, security groups, DNS, and endpoints.</p>
+      </div>
+    </a>
+    <a href="cdn-toolkit.html" class="tool-card">
+      <span class="tool-mark">CDN</span>
+      <div>
+        <h2>CloudFront & ALB</h2>
+        <p>Cache behavior, origin errors, and target health.</p>
+      </div>
+    </a>
+    <a href="apigw-toolkit.html" class="tool-card">
+      <span class="tool-mark">API</span>
+      <div>
+        <h2>API Gateway</h2>
+        <p>Error rates, throttling, access logs, and stages.</p>
+      </div>
+    </a>
+    <a href="compute-toolkit.html" class="tool-card">
+      <span class="tool-mark">ECS</span>
+      <div>
+        <h2>ECS / Lambda / EC2</h2>
+        <p>Tasks, concurrency, scaling groups, and volumes.</p>
+      </div>
+    </a>
+    <a href="sqs-toolkit.html" class="tool-card">
+      <span class="tool-mark">SQS</span>
+      <div>
+        <h2>SQS & SNS</h2>
+        <p>Queue depth, DLQ checks, and delivery failures.</p>
+      </div>
+    </a>
+    <a href="stepfn-toolkit.html" class="tool-card">
+      <span class="tool-mark">SFN</span>
+      <div>
+        <h2>Step Functions</h2>
+        <p>Failed executions, history traces, and rule targets.</p>
+      </div>
+    </a>
+    <a href="ddb-toolkit.html" class="tool-card">
+      <span class="tool-mark">DDB</span>
+      <div>
+        <h2>DynamoDB</h2>
+        <p>Throttles, capacity settings, and item inspection.</p>
+      </div>
+    </a>
+    <a href="security-toolkit.html" class="tool-card">
+      <span class="tool-mark">IAM</span>
+      <div>
+        <h2>Security Toolkit</h2>
+        <p>IAM simulation, S3 audit, KMS, Secrets Manager, and CloudTrail.</p>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer">Workspace Automation Portal &copy; 2026</div>
+</div>
+</body>
+</html>

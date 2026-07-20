@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Step Functions & EventBridge Toolkit</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  <div class="header">
+    <div class="tag">⚙️ Orchestration</div>
+    <h1>Step Functions & EventBridge Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Debug failed state machine executions, EventBridge rule routing, and schedules.</p>
+  </div>
+
+  <div class="section-label">Step Functions</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Failed Execution Inspector</h3>
+      <p>List recently failed executions and fetch the error cause from the last one.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>State Machine ARN</label><input type="text" id="sf-arn" value="arn:aws:states:us-east-1:123:stateMachine:my-sm" oninput="updateSfFailed()"></div>
+      <div class="field"><label>Max Results</label><input type="number" id="sf-max" value="5" oninput="updateSfFailed()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sf-failed-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sf-failed-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Execution History Trace</h3>
+      <p>Dump the full event history of a specific execution to trace the exact failure point.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Execution ARN</label><input type="text" id="sf-exec-arn" value="arn:aws:states:us-east-1:123:execution:my-sm:run-id" oninput="updateSfHistory()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sf-hist-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sf-hist-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">EventBridge</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>EventBridge Rule Inspector</h3>
+      <p>List all targets for an EventBridge rule and their current state.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Event Bus Name</label><input type="text" id="eb-bus" value="default" oninput="updateEbRules()"></div>
+      <div class="field"><label>Rule Name (Optional)</label><input type="text" id="eb-rule" value="my-rule" oninput="updateEbRules()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('eb-rules-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="eb-rules-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>EventBridge DLQ Failure Monitor</h3>
+      <p>Check CloudWatch for FailedInvocations on a specific rule.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Rule Name</label><input type="text" id="eb-fail-rule" value="my-rule" oninput="updateEbFailures()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('eb-fail-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="eb-fail-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">Step Functions & EventBridge Toolkit &copy; 2026</div>
+</div>
+<script>
+function copyCode(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText);
+  const o = btn.innerHTML; btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = o; }, 2000);
+}
+function updateSfFailed() {
+  const arn = document.getElementById('sf-arn').value;
+  const max = document.getElementById('sf-max').value;
+  const script = `# Step Functions Failed Executions
+echo "--- Recent Failed Executions ---"
+FAILED=$(aws stepfunctions list-executions --state-machine-arn "${arn}" \\
+  --status-filter FAILED --max-results ${max} \\
+  --query 'executions[*].{Name:name, Start:startDate, Stop:stopDate}' --output table)
+echo "$FAILED"
+
+LAST_EXEC=$(aws stepfunctions list-executions --state-machine-arn "${arn}" \\
+  --status-filter FAILED --max-results 1 --query 'executions[0].executionArn' --output text)
+if [ -n "$LAST_EXEC" ]; then
+  echo -e "\\n--- Error from last failed execution ---"
+  aws stepfunctions describe-execution --execution-arn "$LAST_EXEC" \\
+    --query '{Cause:cause, Error:error}' --output json
+fi`;
+  document.getElementById('sf-failed-code').innerText = script;
+}
+function updateSfHistory() {
+  const arn = document.getElementById('sf-exec-arn').value;
+  const script = `# Step Functions Execution History
+aws stepfunctions get-execution-history --execution-arn "${arn}" \\
+  --query 'events[*].{Time:timestamp, Type:type, StateEntered:stateEnteredEventDetails.name, TaskFailed:taskFailedEventDetails.cause}' \\
+  --output table`;
+  document.getElementById('sf-hist-code').innerText = script;
+}
+function updateEbRules() {
+  const bus = document.getElementById('eb-bus').value;
+  const rule = document.getElementById('eb-rule').value;
+  const script = `# EventBridge Targets for rule: ${rule}
+aws events list-targets-by-rule --rule "${rule}" --event-bus-name "${bus}" \\
+  --query 'Targets[*].{ID:Id, ARN:Arn, Role:RoleArn}' --output table`;
+  document.getElementById('eb-rules-code').innerText = script;
+}
+function updateEbFailures() {
+  const rule = document.getElementById('eb-fail-rule').value;
+  const script = `# EventBridge FailedInvocations
+aws cloudwatch get-metric-statistics --namespace AWS/Events --metric-name FailedInvocations \\
+  --dimensions Name=RuleName,Value=${rule} \\
+  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \\
+  --period 300 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, Failures:Sum}' --output table`;
+  document.getElementById('eb-fail-code').innerText = script;
+}
+window.onload = () => { updateSfFailed(); updateSfHistory(); updateEbRules(); updateEbFailures(); };
+</script>
+</body>
+</html>

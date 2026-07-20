@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Workspace Portal</title>
+  <link rel="stylesheet" href="style.css?v=3">
+</head>
+
+<body>
+  <div class="container">
+    <div class="topbar">
+      <a href="/" class="nav-back">Back to Portal</a>
+      <span class="meta-pill">Knowledge Base Admin</span>
+    </div>
+
+    <div id="loginSection" class="container narrow">
+      <div class="header center">
+        <div class="tag">Authentication</div>
+        <h1>Admin Login</h1>
+        <p style="margin-left:auto;margin-right:auto;">Sign in to upload, delete, and re-index knowledge-base documents.</p>
+      </div>
+      <div id="loginFlash" class="flash flash-error" style="display:none;"></div>
+      <div class="card">
+        <form id="loginForm">
+          <div class="field">
+            <label>Username</label>
+            <input type="text" id="username" required autofocus placeholder="Enter username">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="password" required placeholder="Enter password">
+          </div>
+          <button type="submit" class="btn">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="dashboardSection" style="display:none;">
+      <div class="portal-hero">
+        <div class="header">
+          <div class="tag">Admin Panel</div>
+          <h1>Knowledge Base Manager</h1>
+          <p>Manage document uploads and rebuild the selected Chroma index after changing files or embedding settings.</p>
+        </div>
+        <div class="portal-actions">
+          <button onclick="logout()" class="btn btn-outline">Logout</button>
+        </div>
+      </div>
+
+      <div class="admin-layout">
+        <aside class="card">
+          <div class="section-label">Current Context</div>
+          <div class="field">
+            <label>Client</label>
+            <select id="adminClient" onchange="updateAdminCtx()">
+              <option value="fibt">FIBT</option>
+              <option value="cc">CC - Cloud Card</option>
+              <option value="cbkc">CBKC</option>
+              <option value="cp">CP - Central Processing</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Environment</label>
+            <select id="adminEnv" onchange="updateAdminCtx()">
+              <option value="QA">QA</option>
+              <option value="Sandbox">Sandbox</option>
+              <option value="Production">Production</option>
+            </select>
+          </div>
+          <button onclick="reindex()" id="reindexBtn" class="btn btn-outline">Re-Index Context</button>
+        </aside>
+
+        <main class="admin-stack">
+          <section class="card">
+            <div class="section-label" id="uploadLabel">Upload Documents</div>
+            <form id="uploadForm">
+              <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+                <span class="icon">DOC</span>
+                <p id="dropzoneText">Click or drag files here</p>
+                <p class="hint">Supported: PDF, DOCX, TXT. Max 50MB per file.</p>
+                <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt" style="display:none" onchange="handleFileSelect(this)">
+              </div>
+              <button type="submit" class="btn" style="margin-top:16px;" id="uploadBtn" disabled>Upload</button>
+            </form>
+          </section>
+
+          <section class="card">
+            <div class="inline-actions" style="margin-bottom:14px;">
+              <div class="section-label" style="margin-bottom:0;padding-bottom:0;border-bottom:none;" id="listLabel">Indexed Documents</div>
+              <span class="meta-pill" id="fileCount">0 files</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="file-table" id="fileTable">
+                <thead>
+                  <tr>
+                    <th>Filename</th>
+                    <th style="width:110px;text-align:center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div class="footer">Workspace Automation Portal &copy; 2026</div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('adminToken');
+
+    if (token) {
+      showDashboard();
+    }
+
+    document.getElementById('loginForm')?.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      try {
+        const res = await fetch('/api/rag/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          token = data.token;
+          localStorage.setItem('adminToken', token);
+          showDashboard();
+        } else {
+          document.getElementById('loginFlash').textContent = 'Invalid credentials';
+          document.getElementById('loginFlash').style.display = 'block';
+        }
+      } catch (e) {
+        alert('Network error');
+      }
+    });
+
+    function showDashboard() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('dashboardSection').style.display = 'block';
+      updateAdminCtx();
+    }
+
+    function logout() {
+      localStorage.removeItem('adminToken');
+      location.reload();
+    }
+
+    function updateAdminCtx() {
+      const c = document.getElementById('adminClient').value;
+      const e = document.getElementById('adminEnv').value;
+      document.getElementById('uploadLabel').textContent = `Upload Documents to ${c.toUpperCase()} (${e})`;
+      document.getElementById('uploadBtn').textContent = `Upload to ${c.toUpperCase()}`;
+      document.getElementById('listLabel').textContent = `Indexed in ${c.toUpperCase()} (${e})`;
+      document.getElementById('reindexBtn').textContent = `Re-Index ${c.toUpperCase()}`;
+      fetchFiles(c, e);
+    }
+
+    function handleFileSelect(input) {
+      const btn = document.getElementById('uploadBtn');
+      const txt = document.getElementById('dropzoneText');
+      if (input.files && input.files.length > 0) {
+        btn.disabled = false;
+        txt.textContent = `${input.files.length} file(s) selected`;
+        document.getElementById('dropzone').style.borderColor = 'var(--accent-strong)';
+      } else {
+        btn.disabled = true;
+        txt.textContent = 'Click or drag files here';
+        document.getElementById('dropzone').style.borderColor = '';
+      }
+    }
+
+    document.getElementById('dropzone')?.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      this.classList.add('dragover');
+    });
+
+    document.getElementById('dropzone')?.addEventListener('dragleave', function () {
+      this.classList.remove('dragover');
+    });
+
+    document.getElementById('dropzone')?.addEventListener('drop', function (e) {
+      e.preventDefault();
+      this.classList.remove('dragover');
+      document.getElementById('fileInput').files = e.dataTransfer.files;
+      handleFileSelect(document.getElementById('fileInput'));
+    });
+
+    document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const files = document.getElementById('fileInput').files;
+      if (!files.length) return;
+
+      const btn = document.getElementById('uploadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Uploading...';
+
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+      formData.append('client', document.getElementById('adminClient').value);
+      formData.append('env', document.getElementById('adminEnv').value);
+
+      try {
+        const res = await fetch('/api/rag/admin/upload', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData
+        });
+        if (res.ok) {
+          alert('Uploaded successfully');
+          document.getElementById('fileInput').value = '';
+          handleFileSelect(document.getElementById('fileInput'));
+          updateAdminCtx();
+        } else {
+          alert('Error uploading');
+          btn.disabled = false;
+          btn.textContent = 'Upload';
+        }
+      } catch (e) {
+        alert('Network error');
+        btn.disabled = false;
+        btn.textContent = 'Upload';
+      }
+    });
+
+    async function fetchFiles(client, env) {
+      try {
+        const res = await fetch(`/api/rag/admin/files?client=${client}&env=${env}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 401) return logout();
+        const data = await res.json();
+        const tbody = document.querySelector('#fileTable tbody');
+        tbody.innerHTML = '';
+        data.files.forEach(f => {
+          const ext = f.split('.').pop().toLowerCase();
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><span class="file-badge badge-${ext}">.${ext}</span> <span style="margin-left:8px">${f}</span></td>
+            <td style="text-align:center;">
+              <form onsubmit="deleteDoc(event, '${f}')" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete ${f}?')">Delete</button>
+              </form>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+        document.getElementById('listLabel').textContent = `Indexed in ${client.toUpperCase()} (${env})`;
+        document.getElementById('fileCount').textContent = `${data.files.length} file${data.files.length === 1 ? '' : 's'}`;
+      } catch (e) { }
+    }
+
+    async function deleteDoc(e, filename) {
+      e.preventDefault();
+      try {
+        const res = await fetch('/api/rag/admin/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            filename,
+            client: document.getElementById('adminClient').value,
+            env: document.getElementById('adminEnv').value
+          })
+        });
+        if (res.ok) updateAdminCtx();
+        else alert('Error deleting');
+      } catch (err) { alert('Network error'); }
+    }
+
+    async function reindex() {
+      const btn = document.getElementById('reindexBtn');
+      const c = document.getElementById('adminClient').value;
+      btn.textContent = 'Indexing...';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/rag/index', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({
+            client: c,
+            env: document.getElementById('adminEnv').value
+          })
+        });
+        const data = await res.json();
+        alert(data.message);
+      } catch (e) {
+        alert('Re-index failed');
+      } finally {
+        btn.textContent = `Re-Index ${c.toUpperCase()}`;
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Generator - Workspace Portal</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div id="formSection">
+    <a href="/" class="nav-back">← Back to Portal</a>
+    <div class="header">
+      <div class="tag">CI/CD Generator</div>
+      <h1>Jenkins Groovy Pipeline</h1>
+    </div>
+    <form class="card" id="pipelineForm">
+      <div class="section-label">Pipeline Configuration</div>
+      <div class="field"><label>Git Repository URL *</label>
+        <input type="text" name="repo_url" required placeholder="e.g. git@bitbucket.org:cloudcardinc/processor-tea-service.git"></div>
+      <div class="row">
+        <div class="field"><label>Git Branch *</label>
+          <input type="text" name="branch_name" required placeholder="e.g. qa, main, master"></div>
+        <div class="field"><label>Deployment Strategy *</label>
+          <select name="deploy_type">
+            <option value="Java">Java (JAR)</option>
+            <option value="Docker">Docker Compose</option>
+          </select></div>
+      </div>
+      <div class="field"><label>Server App Base Folder *</label>
+        <select name="app_dir">
+          <option value="apps">/opt/apps/...</option>
+          <option value="cc-apps">/opt/cc-apps/...</option>
+        </select></div>
+      <button type="submit" class="btn" id="submitBtn">Generate Groovy Script</button>
+    </form>
+  </div>
+
+  <div id="resultSection" style="display:none;">
+    <a href="#" onclick="location.reload()" class="nav-back">← Back to Generator</a>
+    <div class="header">
+      <div class="tag">Success</div>
+      <h1>Your Pipeline is Ready</h1>
+    </div>
+    <div class="card">
+      <p style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">Copy this code into your Jenkinsfile:</p>
+      <textarea id="outputBox" style="width:100%; height:400px; padding:16px; border-radius:10px; border:1px solid var(--border-subtle); background:var(--bg-deep); color:var(--text-primary); font-family:'JetBrains Mono',monospace; font-size:12px; white-space:pre; resize:vertical;" readonly></textarea>
+      <button onclick="document.getElementById('outputBox').select(); document.execCommand('copy'); this.textContent='Copied!'" class="btn btn-outline" style="margin-top:16px;">Copy to Clipboard</button>
+    </div>
+  </div>
+
+  <div class="footer">Workspace Automation Portal &copy; 2026</div>
+</div>
+
+<script>
+document.getElementById('pipelineForm')?.addEventListener('submit', async function(e){
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  
+  const formData = new URLSearchParams(new FormData(this));
+  try {
+      const response = await fetch('/api/tools/generate_pipeline', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: formData.toString()
+      });
+      const data = await response.json();
+      if(data.script) {
+          document.getElementById('formSection').style.display = 'none';
+          document.getElementById('resultSection').style.display = 'block';
+          document.getElementById('outputBox').value = data.script;
+      } else {
+          alert('Error: ' + (data.error || 'Unknown error'));
+          btn.disabled = false;
+          btn.textContent = 'Generate Groovy Script';
+      }
+  } catch(err) {
+      alert('Network error.');
+      btn.disabled = false;
+      btn.textContent = 'Generate Groovy Script';
+  }
+});
+</script>
+</body>
+</html>

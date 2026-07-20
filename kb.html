@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base Chat - Workspace Portal</title>
+  <link rel="stylesheet" href="style.css?v=3">
+</head>
+
+<body>
+  <div class="container">
+    <div class="topbar">
+      <a href="/" class="nav-back">Back to Portal</a>
+      <a href="admin.html" class="meta-pill">Admin Panel</a>
+    </div>
+
+    <div id="setupArea" class="container narrow">
+      <div class="header center">
+        <div class="tag">RAG Assistant</div>
+        <h1>Choose a knowledge base</h1>
+        <p style="margin-left:auto;margin-right:auto;">Select the client and environment before starting a document-grounded chat.</p>
+      </div>
+
+      <div class="card">
+        <div class="section-label">Context</div>
+        <div class="setup-grid">
+          <div class="field">
+            <label>Client</label>
+            <select id="selectClient">
+              <option value="fibt">FIBT</option>
+              <option value="cc">CC - Cloud Card</option>
+              <option value="cbkc">CBKC</option>
+              <option value="cp">CP - Central Processing</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Environment</label>
+            <select id="selectEnv">
+              <option value="QA">QA</option>
+              <option value="Sandbox">Sandbox</option>
+              <option value="Production">Production</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="setContext()" class="btn">Enter Chat</button>
+      </div>
+    </div>
+
+    <div id="chatArea" class="panel" style="display:none;">
+      <div class="chat-shell">
+        <aside class="chat-sidebar">
+          <div class="brand">
+            <span class="brand-mark">KB</span>
+            <div>
+              <div class="brand-title">Knowledge Base</div>
+              <div class="brand-subtitle">Document-grounded answers</div>
+            </div>
+          </div>
+
+          <div class="context-summary">
+            <div class="context-chip">
+              <span>Client</span>
+              <strong id="clientLabel"></strong>
+            </div>
+            <div class="context-chip">
+              <span>Environment</span>
+              <strong id="envLabel"></strong>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:10px;margin-top:18px;">
+            <button onclick="indexDocs()" id="indexBtn" class="btn btn-outline btn-sm">Refresh Index</button>
+            <button onclick="resetContext()" class="btn btn-outline btn-sm">Change Context</button>
+          </div>
+        </aside>
+
+        <main class="chat-main">
+          <div class="chat-header">
+            <div>
+              <div class="eyebrow">Active Context</div>
+              <div style="margin-top:4px;font-weight:800;" id="contextLabel"></div>
+            </div>
+            <a href="admin.html" class="text-link">Manage documents</a>
+          </div>
+
+          <div id="chatWindow" class="chat-window">
+            <div class="message bot">
+              <strong>Infrastructure Assistant</strong><br><br>
+              I am synced with <strong id="greetingContextLabel"></strong>. Ask about uploaded runbooks, pipelines, deployments, or environment procedures.
+            </div>
+          </div>
+
+          <div class="chat-composer">
+            <input type="text" id="userInput" placeholder="Ask a question from the selected documents" onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" id="sendBtn" class="btn" style="width:auto;">Send</button>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentClient = localStorage.getItem('active_client');
+    let currentEnv = localStorage.getItem('active_env');
+
+    function init() {
+      if (currentClient && currentEnv) {
+        document.getElementById('setupArea').style.display = 'none';
+        document.getElementById('chatArea').style.display = 'block';
+
+        const label = `${currentClient.toUpperCase()} (${currentEnv})`;
+        document.getElementById('contextLabel').textContent = label;
+        document.getElementById('greetingContextLabel').textContent = label;
+        document.getElementById('clientLabel').textContent = currentClient.toUpperCase();
+        document.getElementById('envLabel').textContent = currentEnv;
+      } else {
+        document.getElementById('setupArea').style.display = 'block';
+        document.getElementById('chatArea').style.display = 'none';
+      }
+    }
+
+    function setContext() {
+      currentClient = document.getElementById('selectClient').value;
+      currentEnv = document.getElementById('selectEnv').value;
+      localStorage.setItem('active_client', currentClient);
+      localStorage.setItem('active_env', currentEnv);
+      init();
+    }
+
+    function resetContext() {
+      localStorage.removeItem('active_client');
+      localStorage.removeItem('active_env');
+      currentClient = null;
+      currentEnv = null;
+      init();
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatAnswer(text) {
+      let html = escapeHtml(text);
+
+      html = html.replace(/^### (.+)$/gm, '<h3 style="color:var(--accent); margin:16px 0 8px; font-size:16px;">$1</h3>');
+      html = html.replace(/^#### (.+)$/gm, '<h4 style="color:var(--text); margin:12px 0 6px; font-size:14px; border-bottom:1px solid var(--border); padding-bottom:2px;">$1</h4>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      html = html.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      html = html.replace(/^\s*[-*] (.+)$/gm, '<div style="padding-left:16px;position:relative;margin:4px 0"><span style="position:absolute;left:0;color:var(--accent)">-</span>$1</div>');
+      html = html.replace(/^\s*(\d+)\. (.+)$/gm, '<div style="padding-left:24px;position:relative;margin:4px 0"><span style="position:absolute;left:0;color:var(--accent);font-weight:800;font-size:12px">$1.</span>$2</div>');
+      html = html.replace(/\n/g, '<br>');
+
+      return html;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('userInput');
+      const chatWindow = document.getElementById('chatWindow');
+      const btn = document.getElementById('sendBtn');
+      const query = input.value.trim();
+      if (!query) return;
+
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user';
+      userMsg.textContent = query;
+      chatWindow.appendChild(userMsg);
+
+      input.value = '';
+      btn.disabled = true;
+
+      const loadingMsg = document.createElement('div');
+      loadingMsg.id = 'loading';
+      loadingMsg.className = 'message bot loading';
+      loadingMsg.innerHTML = '<span style="display:inline-block;animation:pulse 1.5s infinite">Analyzing documents...</span>';
+      chatWindow.appendChild(loadingMsg);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+
+      try {
+        const response = await fetch('/api/rag/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, client: currentClient, env: currentEnv })
+        });
+        const data = await response.json();
+        loadingMsg.remove();
+
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot';
+        botMsg.innerHTML = formatAnswer(data.answer || "Sorry, I couldn't find an answer.");
+        chatWindow.appendChild(botMsg);
+      } catch (e) {
+        loadingMsg.textContent = 'Error connecting to AI backend.';
+      } finally {
+        btn.disabled = false;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+    }
+
+    async function indexDocs() {
+      const btn = document.getElementById('indexBtn');
+      btn.textContent = 'Indexing...';
+      btn.disabled = true;
+      try {
+        const response = await fetch('/api/rag/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client: currentClient, env: currentEnv })
+        });
+        const data = await response.json();
+        alert(data.message);
+      } catch (e) {
+        alert('Failed to index files.');
+      } finally {
+        btn.textContent = 'Refresh Index';
+        btn.disabled = false;
+      }
+    }
+
+    init();
+  </script>
+</body>
+
+</html>

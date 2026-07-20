@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K8s Toolkit - CloudShell Automations</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  
+  <div class="header">
+    <div class="tag">☸️ Kubernetes</div>
+    <h1>K8s Debug Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Deep-link into your clusters. Parameterize and copy.</p>
+  </div>
+
+  <!-- BASIC SCRIPTS -->
+  <div class="section-label">Basic Diagnosis</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>K8s Pod Log Analyzer</h3>
+        <p>Retrieve logs from a specific container and pinpoint errors.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Namespace</label>
+        <input type="text" id="k8s-ns" value="default" oninput="updateK8sLogs()">
+      </div>
+      <div class="field">
+        <label>Pod Prefix</label>
+        <input type="text" id="k8s-pod" value="nginx" oninput="updateK8sLogs()">
+      </div>
+      <div class="field">
+        <label>Container</label>
+        <input type="text" id="k8s-container" value="nginx" oninput="updateK8sLogs()">
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Since (e.g., 1h, 15m)</label>
+        <input type="text" id="k8s-since" value="1h" oninput="updateK8sLogs()">
+      </div>
+      <div class="field">
+        <label>Error Keyword</label>
+        <input type="text" id="k8s-grep" value="error\|fail\|exception" oninput="updateK8sLogs()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('k8s-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="k8s-code"></pre>
+    </div>
+  </div>
+
+  <!-- ADVANCED SCRIPTS -->
+  <div class="section-label">Advanced Operations</div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>Pod Resource Usage (Top)</h3>
+        <p>View real-time CPU and Memory consumption for all pods in a namespace.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Namespace</label>
+        <input type="text" id="k8s-top-ns" value="default" oninput="updateK8sTop()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('k8s-top-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="k8s-top-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>Service & Endpoint Mapper</h3>
+        <p>Trace the networking path from a Service to its backend Pod IPs.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Namespace</label>
+        <input type="text" id="k8s-map-ns" value="default" oninput="updateK8sMap()">
+      </div>
+      <div class="field">
+        <label>Service Name</label>
+        <input type="text" id="k8s-map-svc" value="my-service" oninput="updateK8sMap()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('k8s-map-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="k8s-map-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>Node Taint & Schedulability</h3>
+        <p>Check for Node taints that might be preventing Pods from being scheduled.</p>
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('k8s-node-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="k8s-node-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header">
+      <div class="script-info">
+        <h3>K8s Resource Quota Check</h3>
+        <p>Check if a namespace is hitting its CPU/Memory limits.</p>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="field">
+        <label>Namespace</label>
+        <input type="text" id="k8s-q-ns" value="default" oninput="updateK8sQuota()">
+      </div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('k8s-q-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="k8s-q-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">Workspace K8s Toolkit &copy; 2026</div>
+</div>
+
+<script>
+function copyCode(id, btn) {
+  const code = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(code);
+  const original = btn.innerHTML;
+  btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = original; }, 2000);
+}
+
+function updateK8sLogs() {
+  const ns = document.getElementById('k8s-ns').value;
+  const pod = document.getElementById('k8s-pod').value;
+  const container = document.getElementById('k8s-container').value;
+  const since = document.getElementById('k8s-since').value;
+  const grep = document.getElementById('k8s-grep').value;
+
+  const script = `# Find pod and get logs
+POD_NAME=$(kubectl get pods -n ${ns} --no-headers -o custom-columns=":metadata.name" | grep "^${pod}" | head -n 1)
+if [ -z "$POD_NAME" ]; then
+  echo "No pod found matching ${pod}"
+else
+  kubectl logs $POD_NAME -n ${ns} -c ${container} --since=${since} | grep -i "${grep}" --color=always | tail -n 20
+fi`;
+  document.getElementById('k8s-code').innerText = script;
+}
+
+function updateK8sTop() {
+  const ns = document.getElementById('k8s-top-ns').value;
+  const script = `# Check CPU/Mem usage for pods in ${ns}
+kubectl top pods -n ${ns} --sort-by=cpu`;
+  document.getElementById('k8s-top-code').innerText = script;
+}
+
+function updateK8sMap() {
+  const ns = document.getElementById('k8s-map-ns').value;
+  const svc = document.getElementById('k8s-map-svc').value;
+  const script = `# Trace Service to Pods
+echo "--- Service Details ---"
+kubectl get svc ${svc} -n ${ns} -o wide
+echo -e "\\n--- Endpoints & Pod IPs ---"
+kubectl get endpoints ${svc} -n ${ns}
+echo -e "\\n--- Backend Pod Status ---"
+SELECTOR=$(kubectl get svc ${svc} -n ${ns} -o jsonpath='{.spec.selector}' | sed 's/{"//;s/"}/ /;s/":"/=/g')
+kubectl get pods -n ${ns} -l "$SELECTOR" -o wide`;
+  document.getElementById('k8s-map-code').innerText = script;
+}
+
+function updateK8sNode() {
+  const script = `# Check Node Taints and Conditions
+kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints,STATUS:.status.conditions[?(@.type=="Ready")].status`;
+  document.getElementById('k8s-node-code').innerText = script;
+}
+
+function updateK8sQuota() {
+  const ns = document.getElementById('k8s-q-ns').value;
+  const script = `# Check Quotas for ${ns}
+kubectl get quota -n ${ns} --output table
+kubectl get limitrange -n ${ns} --output table`;
+  document.getElementById('k8s-q-code').innerText = script;
+}
+
+window.onload = () => { 
+  updateK8sLogs(); 
+  updateK8sTop(); 
+  updateK8sMap(); 
+  updateK8sNode(); 
+  updateK8sQuota(); 
+};
+</script>
+</body>
+</html>

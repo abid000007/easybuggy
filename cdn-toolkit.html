@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloudFront & ALB Toolkit</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  <div class="header">
+    <div class="tag">🌍 Load Balancing</div>
+    <h1>CloudFront & ALB Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Debug CDN cache, origin errors, and load balancer target health.</p>
+  </div>
+
+  <div class="section-label">CloudFront</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>CloudFront Error Rate Inspector</h3>
+      <p>Check 4xx/5xx error rates and cache hit ratio for a distribution.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Distribution ID</label><input type="text" id="cf-id" value="E1ABCDEF" oninput="updateCfErrors()"></div>
+      <div class="field"><label>Lookback (Hours)</label><input type="number" id="cf-hours" value="1" oninput="updateCfErrors()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('cf-err-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="cf-err-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>CloudFront Cache Invalidation</h3>
+      <p>Trigger a cache invalidation for a specific path or wildcard.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Distribution ID</label><input type="text" id="cf-inv-id" value="E1ABCDEF" oninput="updateCfInv()"></div>
+      <div class="field"><label>Path (e.g. /* or /api/*)</label><input type="text" id="cf-inv-path" value="/api/*" oninput="updateCfInv()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('cf-inv-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="cf-inv-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">ALB / Load Balancer</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>ALB Target Health Check</h3>
+      <p>Inspect the health state of all targets behind a Target Group.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Target Group ARN</label><input type="text" id="alb-tg-arn" value="arn:aws:elasticloadbalancing:us-east-1:123:targetgroup/my-tg/abc" oninput="updateAlbHealth()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('alb-health-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="alb-health-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>ALB 5xx Error Rate Monitor</h3>
+      <p>Check CloudWatch for HTTP 5xx errors on a specific load balancer.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Load Balancer Name</label><input type="text" id="alb-name" value="app/my-alb/1234567890" oninput="updateAlbErrors()"></div>
+      <div class="field"><label>Lookback (Minutes)</label><input type="number" id="alb-min" value="60" oninput="updateAlbErrors()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('alb-err-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="alb-err-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">CloudFront & ALB Toolkit &copy; 2026</div>
+</div>
+<script>
+function copyCode(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText);
+  const o = btn.innerHTML; btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = o; }, 2000);
+}
+function updateCfErrors() {
+  const id = document.getElementById('cf-id').value;
+  const hours = document.getElementById('cf-hours').value;
+  const script = `# CloudFront Error Rates
+ST=$(date -u -d "${hours} hours ago" +%Y-%m-%dT%H:%M:%SZ)
+ET=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+echo "--- 4xx Error Rate ---"
+aws cloudwatch get-metric-statistics --namespace AWS/CloudFront --metric-name 4xxErrorRate \\
+  --dimensions Name=DistributionId,Value=${id} Name=Region,Value=Global \\
+  --start-time $ST --end-time $ET --period 300 --statistics Average \\
+  --query 'Datapoints[*].{Time:Timestamp, Rate:Average}' --output table
+echo "--- 5xx Error Rate ---"
+aws cloudwatch get-metric-statistics --namespace AWS/CloudFront --metric-name 5xxErrorRate \\
+  --dimensions Name=DistributionId,Value=${id} Name=Region,Value=Global \\
+  --start-time $ST --end-time $ET --period 300 --statistics Average \\
+  --query 'Datapoints[*].{Time:Timestamp, Rate:Average}' --output table`;
+  document.getElementById('cf-err-code').innerText = script;
+}
+function updateCfInv() {
+  const id = document.getElementById('cf-inv-id').value;
+  const path = document.getElementById('cf-inv-path').value;
+  const script = `# CloudFront Cache Invalidation
+CALLER_REF=$(date +%s)
+INV_ID=$(aws cloudfront create-invalidation --distribution-id ${id} \\
+  --invalidation-batch "Paths={Quantity=1,Items=[\"${path}\"]},CallerReference=$CALLER_REF" \\
+  --query 'Invalidation.Id' --output text)
+echo "Invalidation created: $INV_ID"
+echo "Checking status..."
+aws cloudfront get-invalidation --distribution-id ${id} --id $INV_ID \\
+  --query 'Invalidation.{ID:Id, Status:Status}' --output table`;
+  document.getElementById('cf-inv-code').innerText = script;
+}
+function updateAlbHealth() {
+  const arn = document.getElementById('alb-tg-arn').value;
+  const script = `# ALB Target Health
+aws elbv2 describe-target-health --target-group-arn "${arn}" \\
+  --query 'TargetHealthDescriptions[*].{Target:Target.Id, Port:Target.Port, State:TargetHealth.State, Reason:TargetHealth.Reason}' \\
+  --output table`;
+  document.getElementById('alb-health-code').innerText = script;
+}
+function updateAlbErrors() {
+  const name = document.getElementById('alb-name').value;
+  const min = document.getElementById('alb-min').value;
+  const script = `# ALB 5xx Errors
+aws cloudwatch get-metric-statistics --namespace AWS/ApplicationELB --metric-name HTTPCode_ELB_5XX_Count \\
+  --dimensions Name=LoadBalancer,Value=${name} \\
+  --start-time $(date -u -d "${min} minutes ago" +%Y-%m-%dT%H:%M:%SZ) --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \\
+  --period 300 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, Errors:Sum}' --output table`;
+  document.getElementById('alb-err-code').innerText = script;
+}
+window.onload = () => { updateCfErrors(); updateCfInv(); updateAlbHealth(); updateAlbErrors(); };
+</script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compute Toolkit - CloudShell Automations</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .dt-range-bar {
+    background: rgba(6,182,212,0.06);
+    border: 1px solid rgba(6,182,212,0.2);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+  }
+  .dt-range-bar .field { flex: 1; min-width: 180px; }
+  .dt-range-bar label {
+    display: block; font-size: 10px; font-weight: 700;
+    color: var(--accent-2); text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dt-range-bar input[type=datetime-local] {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border-subtle);
+    background: rgba(8,12,20,.8); color: var(--text-primary);
+    font-size: 13px; font-family: 'JetBrains Mono', monospace;
+    outline: none; transition: border-color .2s;
+    color-scheme: dark;
+  }
+  .dt-range-bar input[type=datetime-local]:focus {
+    border-color: rgba(6,182,212,.5);
+    box-shadow: 0 0 0 3px rgba(6,182,212,.08);
+  }
+  .dt-range-bar .dt-hint {
+    font-size: 11px; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    align-self: center; padding-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  
+  <div class="header">
+    <div class="tag">☁️ Compute</div>
+    <h1>Compute Debug Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Deep-dive into ECS containers, Lambda, ASG, and EC2. Parameterize and copy.</p>
+  </div>
+
+  <!-- ===== GLOBAL DATE/TIME FILTER ===== -->
+  <div class="dt-range-bar">
+    <div class="field">
+      <label>📅 Start Date &amp; Time</label>
+      <input type="datetime-local" id="global-start" oninput="refreshAll()">
+    </div>
+    <div class="field">
+      <label>📅 End Date &amp; Time</label>
+      <input type="datetime-local" id="global-end" oninput="refreshAll()">
+    </div>
+    <div class="dt-hint">Used by all time-sensitive scripts below</div>
+  </div>
+
+  <!-- ===== ECS ADVANCED ===== -->
+  <div class="section-label">🐳 ECS — Container Error Intelligence</div>
+  <p style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">All scripts auto-discover the cluster from the service name and derive the log group automatically.</p>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Container Error Pinpointer</h3>
+      <p>Auto-finds the cluster for your service, derives the log group, and shows every error with an exact timestamp and container name.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Service Name</label><input type="text" id="ecs-ep-svc" value="api-service" oninput="updateEcsErrorPin()"></div>
+      <div class="field"><label>Error Pattern</label><input type="text" id="ecs-ep-pattern" value="ERROR" oninput="updateEcsErrorPin()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ecs-ep-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ecs-ep-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Stopped Task — Container Failure Deep Dive</h3>
+      <p>Auto-discovers the cluster, then for each stopped task shows container name, exit code, stop reason, and the exact timestamp it stopped.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Service Name</label><input type="text" id="ecs-st-svc" value="api-service" oninput="updateEcsStoppedDeep()"></div>
+      <div class="field"><label>Max Tasks</label><input type="number" id="ecs-st-max" value="10" oninput="updateEcsStoppedDeep()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ecs-st-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ecs-st-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>OOMKill Detector</h3>
+      <p>Searches all clusters for your service and flags any container killed by Out-of-Memory (exit code 137) with exact time.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Service Name</label><input type="text" id="ecs-oom-svc" value="api-service" oninput="updateEcsOom()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ecs-oom-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ecs-oom-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Running Task — Live Container Status</h3>
+      <p>Finds the cluster, then shows all running containers with their health status and started time.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Service Name</label><input type="text" id="ecs-run-svc" value="api-service" oninput="updateEcsRunning()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ecs-run-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ecs-run-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Service Deployment Timeline</h3>
+      <p>Shows full deployment history with task def version, running counts, and timestamps — correlate errors to a deployment.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Service Name</label><input type="text" id="ecs-dep-svc" value="api-service" oninput="updateEcsDeployments()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ecs-dep-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ecs-dep-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Service Events Log</h3>
+      <p>Shows the last 10 service events with timestamps — auto-flags failures, scaling issues, and deployment warnings.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Service Name</label><input type="text" id="ecs-ev-svc" value="api-service" oninput="updateEcsEvents()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ecs-ev-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ecs-ev-code"></pre>
+    </div>
+  </div>
+
+  <!-- ===== LAMBDA ===== -->
+  <div class="section-label">⚡ Lambda</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Lambda Concurrency & Limit Check</h3>
+      <p>Check if your function is nearing its concurrency limits.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Function Name</label><input type="text" id="lam-limit-name" value="my-function" oninput="updateLambdaLimit()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('lam-limit-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="lam-limit-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Lambda Performance Tracer</h3>
+      <p>Get average duration and error counts from CloudWatch metrics.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Function Name</label><input type="text" id="lam-name" value="my-backend-function" oninput="updateLambda()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('lam-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="lam-code"></pre>
+    </div>
+  </div>
+
+  <!-- ===== ASG & EC2 ===== -->
+  <div class="section-label">🖥️ ASG & EC2</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>ASG Activity Investigator</h3>
+      <p>Retrieve recent scaling events and their reasons.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>ASG Name</label><input type="text" id="asg-name" value="app-asg" oninput="updateAsg()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('asg-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="asg-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>EBS "Ghost" Auditor</h3>
+      <p>Find EBS volumes that are unattached (potential cost leaks).</p>
+    </div></div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ebs-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ebs-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">Workspace Compute Toolkit &copy; 2026</div>
+</div>
+
+<script>
+function copyCode(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText);
+  const o = btn.innerHTML; btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = o; }, 2000);
+}
+
+// Shared cluster-discovery snippet injected into every ECS script
+function clusterFinder(svc) {
+  return `# ── Step 1: Auto-discover cluster containing service "${svc}" ──
+CLUSTER=""
+for c in $(aws ecs list-clusters --query 'clusterArns[*]' --output text); do
+  CNAME=$(echo $c | awk -F'/' '{print $NF}')
+  MATCH=$(aws ecs list-services --cluster $CNAME --query "serviceArns[?contains(@,'${svc}')]" --output text 2>/dev/null)
+  if [ -n "$MATCH" ]; then
+    CLUSTER=$CNAME
+    echo "✅ Found service '${svc}' in cluster: $CLUSTER"
+    break
+  fi
+done
+if [ -z "$CLUSTER" ]; then
+  echo "❌ Service '${svc}' not found in any cluster. Check the name and try again."
+  exit 1
+fi`;
+}
+
+// ─── Helper: read global datetime pickers → epoch ms strings for bash ────
+function getDateRange() {
+  const startEl = document.getElementById('global-start');
+  const endEl   = document.getElementById('global-end');
+  const startMs = startEl.value ? new Date(startEl.value).getTime() : null;
+  const endMs   = endEl.value   ? new Date(endEl.value).getTime()   : null;
+  const startStr = startEl.value
+    ? new Date(startEl.value).toISOString().replace('T',' ').slice(0,19) + ' UTC'
+    : '(30 minutes ago)';
+  const endStr   = endEl.value
+    ? new Date(endEl.value).toISOString().replace('T',' ').slice(0,19) + ' UTC'
+    : '(now)';
+  return { startMs, endMs, startStr, endStr };
+}
+
+function dateRangeBash() {
+  const { startMs, endMs } = getDateRange();
+  const startLine = startMs
+    ? `START_MS=${startMs}`
+    : `START_MS=$(date -d "30 minutes ago" +%s)000`;
+  const endLine = endMs
+    ? `END_MS=${endMs}`
+    : `END_MS=$(date +%s)000`;
+  return `${startLine}\n${endLine}`;
+}
+
+function cwDateRange() {
+  const { startMs, endMs } = getDateRange();
+  const st = startMs
+    ? new Date(startMs).toISOString()
+    : `$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)`;
+  const et = endMs
+    ? new Date(endMs).toISOString()
+    : `$(date -u +%Y-%m-%dT%H:%M:%SZ)`;
+  return { st, et };
+}
+
+// ─── ECS: Container Error Pinpointer ──────────────────────────────────────
+function updateEcsErrorPin() {
+  const svc     = document.getElementById('ecs-ep-svc').value;
+  const pattern = document.getElementById('ecs-ep-pattern').value;
+  const { startStr, endStr } = getDateRange();
+
+  const script = `#!/bin/bash
+# ════════════════════════════════════════════════════════════════
+#  ECS Container Error Pinpointer  |  Service: ${svc}
+#  Range: ${startStr} → ${endStr}
+# ════════════════════════════════════════════════════════════════
+${clusterFinder(svc)}
+
+# ── Step 2: Derive log group from service name ──
+LOG_GROUP="/ecs/${svc}"
+${dateRangeBash()}
+
+echo ""
+echo "Searching log group [$LOG_GROUP] for '${pattern}'"
+echo "From : ${startStr}"
+echo "To   : ${endStr}"
+echo "────────────────────────────────────────────────────────────"
+
+RESULTS=$(aws logs filter-log-events \\
+  --log-group-name "$LOG_GROUP" \\
+  --start-time $START_MS \\
+  --end-time $END_MS \\
+  --filter-pattern "${pattern}" \\
+  --query 'events[*].{timestamp:timestamp, logStreamName:logStreamName, message:message}' \\
+  --output json 2>/dev/null)
+
+if [ -z "$RESULTS" ] || [ "$RESULTS" = "[]" ]; then
+  echo "✅ No '${pattern}' errors found in the selected range."
+else
+  echo "$RESULTS" | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+events = json.load(sys.stdin)
+print(f'  Found {len(events)} error(s):\\n')
+for e in events:
+    ts = datetime.fromtimestamp(e['timestamp']/1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    stream = e['logStreamName']
+    parts = stream.split('/')
+    container = parts[1] if len(parts) >= 3 else stream
+    task_id   = parts[2][:8] if len(parts) >= 3 else '?'
+    print(f'  ┌─ Time      : {ts}')
+    print(f'  ├─ Container : {container}')
+    print(f'  ├─ Task ID   : {task_id}...')
+    print(f'  └─ Error     : {e[\"message\"].strip()[:250]}')
+    print()
+"
+fi`;
+  document.getElementById('ecs-ep-code').innerText = script;
+}
+
+// ─── ECS: Stopped Task Deep Dive ──────────────────────────────────────────
+function updateEcsStoppedDeep() {
+  const svc = document.getElementById('ecs-st-svc').value;
+  const max = document.getElementById('ecs-st-max').value;
+
+  const script = `#!/bin/bash
+# ════════════════════════════════════════════════════════════════
+#  ECS Stopped Task — Container Failure Deep Dive  |  ${svc}
+# ════════════════════════════════════════════════════════════════
+${clusterFinder(svc)}
+
+TASK_ARNS=$(aws ecs list-tasks \\
+  --cluster $CLUSTER --service-name ${svc} \\
+  --desired-status STOPPED --max-items ${max} \\
+  --query 'taskArns' --output text)
+
+if [ -z "$TASK_ARNS" ]; then
+  echo "✅ No stopped tasks found for '${svc}'"
+  exit 0
+fi
+
+aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARNS \\
+  --query 'tasks[*]' --output json | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+tasks = json.load(sys.stdin)
+print(f'\\n{len(tasks)} stopped task(s) for service [${svc}]:\\n')
+for t in tasks:
+    task_id = t['taskArn'].split('/')[-1]
+    stopped_at = t.get('stoppedAt')
+    stopped_at = datetime.fromtimestamp(stopped_at, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC') if stopped_at else 'N/A'
+    print(f'┌─── Task: {task_id}')
+    print(f'│    Stopped At  : {stopped_at}')
+    print(f'│    Stop Code   : {t.get(\"stopCode\", \"N/A\")}')
+    print(f'│    Stop Reason : {t.get(\"stoppedReason\", \"N/A\")}')
+    print('│    Containers  :')
+    for c in t.get('containers', []):
+        exit_code = c.get('exitCode', 'N/A')
+        reason    = c.get('reason', 'None')
+        flag      = '🔴' if exit_code not in [0, 'N/A'] else '✅'
+        print(f'│    {flag}  {c.get(\"name\", \"unknown\")}')
+        print(f'│         Exit Code : {exit_code}')
+        print(f'│         Status    : {c.get(\"lastStatus\", \"N/A\")}')
+        print(f'│         Reason    : {reason}')
+    print('└─────────────────────────────────────────────────────')
+"`;
+  document.getElementById('ecs-st-code').innerText = script;
+}
+
+// ─── ECS: OOMKill Detector ────────────────────────────────────────────────
+function updateEcsOom() {
+  const svc = document.getElementById('ecs-oom-svc').value;
+
+  const script = `#!/bin/bash
+# ════════════════════════════════════════════════════════════════
+#  ECS OOMKill Detector  |  Service: ${svc}
+# ════════════════════════════════════════════════════════════════
+${clusterFinder(svc)}
+
+TASK_ARNS=$(aws ecs list-tasks \\
+  --cluster $CLUSTER --service-name ${svc} \\
+  --desired-status STOPPED --max-items 20 \\
+  --query 'taskArns' --output text)
+
+if [ -z "$TASK_ARNS" ]; then
+  echo "✅ No stopped tasks found for '${svc}'"
+  exit 0
+fi
+
+aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARNS \\
+  --query 'tasks[*]' --output json | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+tasks = json.load(sys.stdin)
+found = False
+for t in tasks:
+    task_id = t['taskArn'].split('/')[-1]
+    stopped_at = t.get('stoppedAt')
+    stopped_at = datetime.fromtimestamp(stopped_at, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC') if stopped_at else 'N/A'
+    for c in t.get('containers', []):
+        code   = c.get('exitCode')
+        reason = c.get('reason', '')
+        if code == 137 or 'OutOfMemory' in reason or 'oom' in reason.lower():
+            found = True
+            print('🚨 OOM KILL DETECTED')
+            print(f'   Task ID   : {task_id}')
+            print(f'   Container : {c.get(\"name\", \"unknown\")}')
+            print(f'   Exit Code : {code} (137 = OOMKilled)')
+            print(f'   Reason    : {reason}')
+            print(f'   Stopped   : {stopped_at}')
+            print()
+if not found:
+    print('✅ No OOMKilled containers in the last 20 stopped tasks.')
+"`;
+  document.getElementById('ecs-oom-code').innerText = script;
+}
+
+// ─── ECS: Running Task Status ─────────────────────────────────────────────
+function updateEcsRunning() {
+  const svc = document.getElementById('ecs-run-svc').value;
+
+  const script = `#!/bin/bash
+# ════════════════════════════════════════════════════════════════
+#  ECS Running Task — Live Container Status  |  ${svc}
+# ════════════════════════════════════════════════════════════════
+${clusterFinder(svc)}
+
+TASK_ARNS=$(aws ecs list-tasks \\
+  --cluster $CLUSTER --service-name ${svc} \\
+  --desired-status RUNNING --query 'taskArns' --output text)
+
+if [ -z "$TASK_ARNS" ]; then
+  echo "⚠️  No running tasks for '${svc}'"
+  exit 0
+fi
+
+aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARNS \\
+  --query 'tasks[*]' --output json | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+tasks = json.load(sys.stdin)
+print(f'{len(tasks)} running task(s) for [${svc}]:\\n')
+for t in tasks:
+    task_id = t['taskArn'].split('/')[-1]
+    started = t.get('startedAt')
+    started = datetime.fromtimestamp(started, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC') if started else 'N/A'
+    print(f'┌─── Task: {task_id}')
+    print(f'│    Started     : {started}')
+    print(f'│    Last Status : {t.get(\"lastStatus\", \"N/A\")}')
+    print('│    Containers  :')
+    for c in t.get('containers', []):
+        health = c.get('healthStatus', 'N/A')
+        icon = '✅' if health == 'HEALTHY' else ('⚠️ ' if health == 'UNKNOWN' else '🔴')
+        print(f'│    {icon}  {c.get(\"name\", \"unknown\")}')
+        print(f'│         Status : {c.get(\"lastStatus\", \"N/A\")}')
+        print(f'│         Health : {health}')
+    print('└─────────────────────────────────────────────────────')
+"`;
+  document.getElementById('ecs-run-code').innerText = script;
+}
+
+// ─── ECS: Deployment Timeline ─────────────────────────────────────────────
+function updateEcsDeployments() {
+  const svc = document.getElementById('ecs-dep-svc').value;
+
+  const script = `#!/bin/bash
+# ════════════════════════════════════════════════════════════════
+#  ECS Service Deployment Timeline  |  ${svc}
+# ════════════════════════════════════════════════════════════════
+${clusterFinder(svc)}
+
+aws ecs describe-services \\
+  --cluster $CLUSTER --services ${svc} \\
+  --query 'services[0].deployments' --output json | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+deploys = json.load(sys.stdin)
+print(f'Deployment History for [${svc}]:\\n')
+for d in deploys:
+    created = datetime.fromtimestamp(d['createdAt'], tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    updated = datetime.fromtimestamp(d['updatedAt'], tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    status  = d.get('rolloutState', d.get('status', 'N/A'))
+    icon    = '✅' if status in ['COMPLETED', 'PRIMARY'] else ('🔄' if status == 'IN_PROGRESS' else '🔴')
+    print(f'{icon} Deployment : {d[\"id\"]}')
+    print(f'   Status    : {status}')
+    print(f'   Task Def  : {d[\"taskDefinition\"].split(\"/\")[-1]}')
+    print(f'   Running   : {d[\"runningCount\"]} / {d[\"desiredCount\"]} desired')
+    print(f'   Created   : {created}')
+    print(f'   Updated   : {updated}')
+    print()
+"`;
+  document.getElementById('ecs-dep-code').innerText = script;
+}
+
+// ─── ECS: Service Events ──────────────────────────────────────────────────
+function updateEcsEvents() {
+  const svc = document.getElementById('ecs-ev-svc').value;
+
+  const script = `#!/bin/bash
+# ════════════════════════════════════════════════════════════════
+#  ECS Service Events Log  |  ${svc}
+# ════════════════════════════════════════════════════════════════
+${clusterFinder(svc)}
+
+aws ecs describe-services \\
+  --cluster $CLUSTER --services ${svc} \\
+  --query 'services[0].events[0:10]' --output json | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+events = json.load(sys.stdin)
+print(f'Last {len(events)} service events for [${svc}]:\\n')
+for e in events:
+    ts  = datetime.fromtimestamp(e['createdAt'], tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    msg = e.get('message', '')
+    icon = '🔴' if any(w in msg.lower() for w in ['stopped','failed','unable','error','deregister']) else '🔵'
+    print(f'{icon} [{ts}]')
+    print(f'   {msg}')
+    print()
+"`;
+  document.getElementById('ecs-ev-code').innerText = script;
+}
+
+// ─── Lambda ────────────────────────────────────────────────────────────────
+function updateLambdaLimit() {
+  const name = document.getElementById('lam-limit-name').value;
+  const script = `# Lambda Concurrency Check
+echo "Reserved Concurrency:"
+aws lambda get-function-concurrency --function-name ${name}
+echo -e "\\n--- Account Limits ---"
+aws lambda get-account-settings --query 'AccountLimit' --output json`;
+  document.getElementById('lam-limit-code').innerText = script;
+}
+function updateLambda() {
+  const name = document.getElementById('lam-name').value;
+  const { st, et } = cwDateRange();
+  const { startStr, endStr } = getDateRange();
+  const script = `# Lambda Performance Tracer  |  ${startStr} → ${endStr}
+aws cloudwatch get-metric-statistics --namespace AWS/Lambda --metric-name Duration \\
+  --dimensions Name=FunctionName,Value=${name} --statistics Average --period 60 \\
+  --start-time ${st} --end-time ${et} \\
+  --query 'Datapoints[*].{Time:Timestamp, AvgDuration:Average}' --output table`;
+  document.getElementById('lam-code').innerText = script;
+}
+
+// ─── ASG & EC2 ─────────────────────────────────────────────────────────────
+function updateAsg() {
+  const name = document.getElementById('asg-name').value;
+  const script = `# ASG Activity
+aws autoscaling describe-scaling-activities --auto-scaling-group-name ${name} \\
+  --max-items 5 --query 'Activities[*].{Time:StartTime, Cause:Cause, Status:StatusCode}' --output table`;
+  document.getElementById('asg-code').innerText = script;
+}
+function updateEbs() {
+  const script = `# Detached EBS Volumes
+aws ec2 describe-volumes --filters Name=status,Values=available \\
+  --query 'Volumes[*].{ID:VolumeId, Size:Size, Created:CreateTime}' --output table`;
+  document.getElementById('ebs-code').innerText = script;
+}
+
+// ─── Refresh all scripts when datetime changes ────────────────────────────
+function refreshAll() {
+  updateEcsErrorPin();
+  updateEcsStoppedDeep();
+  updateEcsOom();
+  updateEcsRunning();
+  updateEcsDeployments();
+  updateEcsEvents();
+  updateLambdaLimit();
+  updateLambda();
+  updateAsg();
+  updateEbs();
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+window.onload = () => {
+  // Default: last 1 hour
+  const now  = new Date();
+  const ago1h = new Date(now.getTime() - 60*60*1000);
+  const fmt  = d => d.toISOString().slice(0, 16);
+  document.getElementById('global-start').value = fmt(ago1h);
+  document.getElementById('global-end').value   = fmt(now);
+  refreshAll();
+};
+</script>
+</body>
+</html>

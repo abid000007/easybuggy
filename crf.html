@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRF Generator - Workspace Portal</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <a href="/" class="nav-back">← Back to Portal</a>
+  <div class="header">
+    <div class="tag">Change Request Form</div>
+    <h1>CRF Automation</h1>
+  </div>
+  <form action="/api/tools/generate_crf" method="POST" class="card" id="submitForm">
+    <div class="section-label">Header Information</div>
+    <div class="row3">
+      <div class="field"><label>Request ID</label>
+        <input type="text" name="request_id" id="request_id" value=""></div>
+      <div class="field"><label>Type</label>
+        <input type="text" name="type" value="Report"></div>
+      <div class="field"><label>Header Date</label>
+        <input type="date" name="header_date" class="date-today"></div>
+    </div>
+    <hr class="divider">
+    <div class="section-label">Requestor Information</div>
+    <div class="row">
+      <div class="field"><label>Requestor Name *</label>
+        <input type="text" name="requestor_name" required placeholder="e.g. Abid Rahim"></div>
+      <div class="field"><label>Date Submitted</label>
+        <input type="date" name="date_submitted" class="date-today"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Priority *</label>
+        <select name="priority">
+          <option value="E">E - Emergency</option>
+          <option value="H" selected>H - High</option>
+          <option value="M">M - Medium</option>
+          <option value="L">L - Low</option>
+        </select></div>
+      <div class="field"><label>Risk Level</label>
+        <select name="risk_level">
+          <option value="HIGH" selected>HIGH</option>
+          <option value="MEDIUM">MEDIUM</option>
+          <option value="LOW">LOW</option>
+        </select></div>
+      <div class="field"><label>Approved</label>
+        <select name="approved">
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+          <option value="Yes Pending" selected>Yes Pending</option>
+        </select></div>
+    </div>
+    <hr class="divider">
+    <div class="section-label">Change Details</div>
+    <div class="field"><label>System / Application Affected *</label>
+      <input type="text" name="system_app" required placeholder="e.g. Dynamo-Tables (CC-Production)"></div>
+    <div class="field"><label>Summary Scope / Description *</label>
+      <textarea name="summary_scope" required placeholder="Describe the change request..."></textarea></div>
+    <div class="field"><label>Affected Areas *</label>
+      <input type="text" name="affected_areas" required placeholder="e.g. DynamoDb - encrypt data at rest"></div>
+    <div class="field"><label>Reason / Business Benefit *</label>
+      <textarea name="reason_benefit" required placeholder="Why is this change needed?"></textarea></div>
+    <hr class="divider">
+    <div class="section-label">Implementation</div>
+    <div class="field"><label>Rollback Process *</label>
+      <textarea name="rollback" required placeholder="Describe rollback steps..."></textarea></div>
+    <div class="row">
+      <div class="field"><label>Estimated Effort *</label>
+        <input type="text" name="estimated_effort" required placeholder="e.g. 20 Minutes"></div>
+      <div class="field"><label>Skill/People Needed *</label>
+        <input type="text" name="skill_people" required placeholder="e.g. DEVOPS"></div>
+    </div>
+    <div class="field"><label>Scheduled Date</label>
+      <input type="date" name="scheduled_date" class="date-today"></div>
+    <hr class="divider">
+    <div class="section-label">Acceptance & Signoff</div>
+    <div class="row3">
+      <div class="field"><label>Submission Date</label>
+        <input type="date" name="submission_date" class="date-today"></div>
+      <div class="field"><label>Approval Date</label>
+        <input type="date" name="approval_date" class="date-today"></div>
+      <div class="field"><label>Completion Date</label>
+        <input type="date" name="completion_date" class="date-today"></div>
+    </div>
+    <div class="field"><label>Management Approval Name</label>
+      <input type="text" name="management_approval" placeholder="e.g. Fahad Mahmood"></div>
+    <button type="submit" class="btn" id="submitBtn">Generate CRF Document (.docx)</button>
+  </form>
+  <div class="footer">Workspace Automation Portal &copy; 2026</div>
+</div>
+<script>
+// Auto-fill dates
+const rawDate = new Date();
+const today = rawDate.toISOString().split('T')[0];
+const todayFlat = rawDate.toLocaleDateString('en-GB').replace(/\//g, '');
+document.querySelectorAll('.date-today').forEach(el => el.value = today);
+document.getElementById('request_id').value = "CC-IT-" + todayFlat + "-01";
+
+document.getElementById('submitForm')?.addEventListener('submit', function(){
+  setTimeout(() => {
+    document.getElementById('submitBtn').disabled=true;
+    document.getElementById('submitBtn').textContent='Generated! You can go back.';
+  }, 100);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQS & SNS Toolkit</title>
+<link rel="stylesheet" href="style.css">
+<style>.dt-range-bar{background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;}.dt-range-bar .field{flex:1;min-width:180px;}.dt-range-bar label{display:block;font-size:10px;font-weight:700;color:var(--accent-2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;}.dt-range-bar input[type=datetime-local]{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border-subtle);background:rgba(8,12,20,.8);color:var(--text-primary);font-size:13px;outline:none;color-scheme:dark;}</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  <div class="dt-range-bar">
+    <div class="field"><label>📅 Start Date &amp; Time</label><input type="datetime-local" id="global-start" oninput="initAll()"></div>
+    <div class="field"><label>📅 End Date &amp; Time</label><input type="datetime-local" id="global-end" oninput="initAll()"></div>
+  </div>
+  <div class="header">
+    <div class="tag">📨 Messaging</div>
+    <h1>SQS & SNS Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Debug queue depths, DLQs, message failures, and SNS subscriptions.</p>
+  </div>
+
+  <div class="section-label">SQS Queue Health</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Queue Depth & Age Inspector</h3>
+      <p>Check message count, in-flight messages, and oldest message age for a queue.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Queue URL</label><input type="text" id="sqs-url" value="https://sqs.us-east-1.amazonaws.com/123/my-queue" oninput="updateSqsDepth()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sqs-depth-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sqs-depth-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Dead Letter Queue (DLQ) Inspector</h3>
+      <p>Peek at the first message in a DLQ to understand why messages are failing.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>DLQ URL</label><input type="text" id="sqs-dlq-url" value="https://sqs.us-east-1.amazonaws.com/123/my-queue-dlq" oninput="updateDlq()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sqs-dlq-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sqs-dlq-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>SQS Processing Rate Monitor</h3>
+      <p>Check NumberOfMessagesSent vs Deleted to gauge processing throughput.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Queue Name</label><input type="text" id="sqs-rate-name" value="my-queue" oninput="updateSqsRate()"></div>
+      <div class="field"><label>Lookback (Minutes)</label><input type="number" id="sqs-rate-min" value="30" oninput="updateSqsRate()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sqs-rate-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sqs-rate-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">SNS Health</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>SNS Topic Subscription Auditor</h3>
+      <p>List all subscriptions for a topic and their status.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Topic ARN</label><input type="text" id="sns-arn" value="arn:aws:sns:us-east-1:123:my-topic" oninput="updateSnsSubs()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sns-subs-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sns-subs-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>SNS Delivery Failure Inspector</h3>
+      <p>Check CloudWatch for SNS NumberOfNotificationsFailed metric.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Topic Name</label><input type="text" id="sns-fail-name" value="my-topic" oninput="updateSnsFailures()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('sns-fail-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="sns-fail-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">SQS & SNS Toolkit &copy; 2026</div>
+</div>
+<script>
+function copyCode(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText);
+  const o = btn.innerHTML; btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = o; }, 2000);
+}
+function updateSqsDepth() {
+  const url = document.getElementById('sqs-url').value;
+  const script = `# SQS Queue Depth
+aws sqs get-queue-attributes --queue-url "${url}" \\
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible ApproximateAgeOfOldestMessage \\
+  --query 'Attributes' --output table`;
+  document.getElementById('sqs-depth-code').innerText = script;
+}
+function updateDlq() {
+  const url = document.getElementById('sqs-dlq-url').value;
+  const script = `# Peek DLQ Message
+MSG=$(aws sqs receive-message --queue-url "${url}" --max-number-of-messages 1 --attribute-names All)
+echo "$MSG" | python3 -c "import sys,json; m=json.load(sys.stdin)['Messages'][0]; print('Body:', m['Body'][:500], '\\nAttributes:', json.dumps(m.get('MessageAttributes', {}), indent=2))"`;
+  document.getElementById('sqs-dlq-code').innerText = script;
+}
+function updateSqsRate() {
+  const name = document.getElementById('sqs-rate-name').value;
+  const min = document.getElementById('sqs-rate-min').value;
+  const script = `# SQS Throughput
+ST=$(date -u -d "${min} minutes ago" +%Y-%m-%dT%H:%M:%SZ)
+ET=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+echo "Sent:"
+aws cloudwatch get-metric-statistics --namespace AWS/SQS --metric-name NumberOfMessagesSent \\
+  --dimensions Name=QueueName,Value=${name} --start-time $ST --end-time $ET --period 300 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, Sent:Sum}' --output table
+echo "Deleted (Processed):"
+aws cloudwatch get-metric-statistics --namespace AWS/SQS --metric-name NumberOfMessagesDeleted \\
+  --dimensions Name=QueueName,Value=${name} --start-time $ST --end-time $ET --period 300 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, Processed:Sum}' --output table`;
+  document.getElementById('sqs-rate-code').innerText = script;
+}
+function updateSnsSubs() {
+  const arn = document.getElementById('sns-arn').value;
+  const script = `# SNS Subscriptions
+aws sns list-subscriptions-by-topic --topic-arn "${arn}" \\
+  --query 'Subscriptions[*].{Protocol:Protocol, Endpoint:Endpoint, Status:SubscriptionArn}' --output table`;
+  document.getElementById('sns-subs-code').innerText = script;
+}
+function updateSnsFailures() {
+  const name = document.getElementById('sns-fail-name').value;
+  const script = `# SNS Delivery Failures
+aws cloudwatch get-metric-statistics --namespace AWS/SNS --metric-name NumberOfNotificationsFailed \\
+  --dimensions Name=TopicName,Value=${name} \\
+  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \\
+  --period 300 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, Failures:Sum}' --output table`;
+  document.getElementById('sns-fail-code').innerText = script;
+}
+function getRange() {
+  const s = document.getElementById('global-start').value;
+  const e = document.getElementById('global-end').value;
+  const sMs = s ? new Date(s).getTime() : null;
+  const eMs = e ? new Date(e).getTime() : null;
+  const sLbl = s ? new Date(s).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(1h ago)';
+  const eLbl = e ? new Date(e).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(now)';
+  const st = sMs ? new Date(sMs).toISOString() : "$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)";
+  const et = eMs ? new Date(eMs).toISOString() : "$(date -u +%Y-%m-%dT%H:%M:%SZ)";
+  return { sMs, eMs, sLbl, eLbl, st, et };
+}
+function initAll() { updateSqsDepth(); updateDlq(); updateSqsRate(); updateSnsSubs(); updateSnsFailures(); }
+window.onload = () => {
+  const now = new Date(); const ago = new Date(now - 3600000);
+  const fmt = d => d.toISOString().slice(0,16);
+  document.getElementById('global-start').value = fmt(ago);
+  document.getElementById('global-end').value = fmt(now);
+  initAll();
+};
+</script>
+</body>
+</html>

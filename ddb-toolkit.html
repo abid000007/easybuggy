@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DynamoDB Toolkit</title>
+<link rel="stylesheet" href="style.css">
+<style>.dt-range-bar{background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:14px;padding:18px 22px;margin-bottom:28px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;}.dt-range-bar .field{flex:1;min-width:180px;}.dt-range-bar label{display:block;font-size:10px;font-weight:700;color:var(--accent-2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;}.dt-range-bar input[type=datetime-local]{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border-subtle);background:rgba(8,12,20,.8);color:var(--text-primary);font-size:13px;outline:none;color-scheme:dark;}</style>
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="nav-back">← Back to Dashboard</a>
+  <div class="dt-range-bar">
+    <div class="field"><label>📅 Start Date &amp; Time</label><input type="datetime-local" id="global-start" oninput="initAll()"></div>
+    <div class="field"><label>📅 End Date &amp; Time</label><input type="datetime-local" id="global-end" oninput="initAll()"></div>
+  </div>
+  <div class="header">
+    <div class="tag">🗃️ DynamoDB</div>
+    <h1>DynamoDB Toolkit</h1>
+    <p style="color:var(--text-secondary);margin-top:8px;">Debug throttling, capacity, hot partitions, and item inspection.</p>
+  </div>
+
+  <div class="section-label">Performance & Throttling</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Throttle & Consumed Capacity Monitor</h3>
+      <p>Check for ReadThrottleEvents and WriteThrottleEvents on a table.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Table Name</label><input type="text" id="ddb-thr-table" value="my-table" oninput="updateDdbThrottle()"></div>
+      <div class="field"><label>Lookback (Minutes)</label><input type="number" id="ddb-thr-min" value="30" oninput="updateDdbThrottle()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ddb-thr-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ddb-thr-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Table Capacity & Settings Dump</h3>
+      <p>Inspect the table's provisioned/on-demand capacity, TTL, and key schema.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Table Name</label><input type="text" id="ddb-cfg-table" value="my-table" oninput="updateDdbConfig()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ddb-cfg-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ddb-cfg-code"></pre>
+    </div>
+  </div>
+
+  <div class="section-label">Data Inspection</div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Get Item by Partition Key</h3>
+      <p>Safely read a single item from DynamoDB by its partition key value.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Table Name</label><input type="text" id="ddb-get-table" value="my-table" oninput="updateDdbGet()"></div>
+      <div class="field"><label>Partition Key Name</label><input type="text" id="ddb-pk-name" value="userId" oninput="updateDdbGet()"></div>
+      <div class="field"><label>Partition Key Value</label><input type="text" id="ddb-pk-val" value="user-123" oninput="updateDdbGet()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ddb-get-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ddb-get-code"></pre>
+    </div>
+  </div>
+
+  <div class="script-card">
+    <div class="script-header"><div class="script-info">
+      <h3>Table Item Count & Size Estimator</h3>
+      <p>Get the approximate item count and storage size of the table.</p>
+    </div></div>
+    <div class="param-grid">
+      <div class="field"><label>Table Name</label><input type="text" id="ddb-size-table" value="my-table" oninput="updateDdbSize()"></div>
+    </div>
+    <div class="script-preview">
+      <button class="copy-btn" onclick="copyCode('ddb-size-code', this)"><span>📋</span> Copy Script</button>
+      <pre id="ddb-size-code"></pre>
+    </div>
+  </div>
+
+  <div class="footer">DynamoDB Toolkit &copy; 2026</div>
+</div>
+<script>
+function copyCode(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText);
+  const o = btn.innerHTML; btn.innerHTML = '<span>✅</span> Copied!';
+  setTimeout(() => { btn.innerHTML = o; }, 2000);
+}
+function updateDdbThrottle() {
+  const table = document.getElementById('ddb-thr-table').value;
+  const min = document.getElementById('ddb-thr-min').value;
+  const script = `# DynamoDB Throttle Check
+ST=$(date -u -d "${min} minutes ago" +%Y-%m-%dT%H:%M:%SZ)
+ET=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+echo "--- Read Throttle Events ---"
+aws cloudwatch get-metric-statistics --namespace AWS/DynamoDB --metric-name ReadThrottleEvents \\
+  --dimensions Name=TableName,Value=${table} --start-time $ST --end-time $ET --period 60 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, ReadThrottles:Sum}' --output table
+echo "--- Write Throttle Events ---"
+aws cloudwatch get-metric-statistics --namespace AWS/DynamoDB --metric-name WriteThrottleEvents \\
+  --dimensions Name=TableName,Value=${table} --start-time $ST --end-time $ET --period 60 --statistics Sum \\
+  --query 'Datapoints[*].{Time:Timestamp, WriteThrottles:Sum}' --output table`;
+  document.getElementById('ddb-thr-code').innerText = script;
+}
+function updateDdbConfig() {
+  const table = document.getElementById('ddb-cfg-table').value;
+  const script = `# DynamoDB Table Config
+aws dynamodb describe-table --table-name ${table} \\
+  --query 'Table.{Status:TableStatus, BillingMode:BillingModeSummary.BillingMode, RCU:ProvisionedThroughput.ReadCapacityUnits, WCU:ProvisionedThroughput.WriteCapacityUnits, Keys:KeySchema, ItemCount:ItemCount}'
+echo -e "\\n--- TTL Status ---"
+aws dynamodb describe-time-to-live --table-name ${table}`;
+  document.getElementById('ddb-cfg-code').innerText = script;
+}
+function updateDdbGet() {
+  const table = document.getElementById('ddb-get-table').value;
+  const pk = document.getElementById('ddb-pk-name').value;
+  const val = document.getElementById('ddb-pk-val').value;
+  const script = `# DynamoDB Get Item
+aws dynamodb get-item \\
+  --table-name ${table} \\
+  --key '{"${pk}": {"S": "${val}"}}' \\
+  --output json`;
+  document.getElementById('ddb-get-code').innerText = script;
+}
+function updateDdbSize() {
+  const table = document.getElementById('ddb-size-table').value;
+  const script = `# DynamoDB Item Count & Size
+aws dynamodb describe-table --table-name ${table} \\
+  --query 'Table.{ItemCount:ItemCount, SizeBytes:TableSizeBytes}' --output json`;
+  document.getElementById('ddb-size-code').innerText = script;
+}
+function getRange() {
+  const s = document.getElementById('global-start').value;
+  const e = document.getElementById('global-end').value;
+  const sMs = s ? new Date(s).getTime() : null;
+  const eMs = e ? new Date(e).getTime() : null;
+  const sLbl = s ? new Date(s).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(30m ago)';
+  const eLbl = e ? new Date(e).toISOString().replace('T',' ').slice(0,19)+' UTC' : '(now)';
+  const st = sMs ? new Date(sMs).toISOString() : "$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%SZ)";
+  const et = eMs ? new Date(eMs).toISOString() : "$(date -u +%Y-%m-%dT%H:%M:%SZ)";
+  return { sMs, eMs, sLbl, eLbl, st, et };
+}
+function initAll() { updateDdbThrottle(); updateDdbConfig(); updateDdbGet(); updateDdbSize(); }
+window.onload = () => {
+  const now = new Date(); const ago = new Date(now - 1800000);
+  const fmt = d => d.toISOString().slice(0,16);
+  document.getElementById('global-start').value = fmt(ago);
+  document.getElementById('global-end').value = fmt(now);
+  initAll();
+};
+</script>
+</body>
+</html>
